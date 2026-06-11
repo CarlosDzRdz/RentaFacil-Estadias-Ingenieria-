@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "944906711765",
+    "project_id": "rentafacil-aa0ba",
+    "storage_bucket": "rentafacil-aa0ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:944906711765:android:6959af3d85e692ae39a85c",
+        "android_client_info": {
+          "package_name": "com.utch.rentafacil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC45LfLaPce0NFsKOzxd18eKPUI18rvlqk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
