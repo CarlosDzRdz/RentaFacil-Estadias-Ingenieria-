@@ -1,33 +1,33 @@
 package com.utch.rentafacil
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    @SuppressLint("SetTextI18n") // <-- Esta línea silencia la advertencia amarilla
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Atrapamos el pase VIP que nos manda el LoginActivity
+        // 1. Verificamos si viene del Login
         val vieneDelLogin = intent.getBooleanExtra("LOGIN_EXITOSO", false)
 
         if (!vieneDelLogin) {
-            // Si el usuario acaba de abrir la app, lo mandamos al Login
+            // Si no viene del Login, lo mandamos para allá
             val intentLogin = Intent(this, LoginActivity::class.java)
             startActivity(intentLogin)
             finish()
             return
         }
 
-        // Si llega a esta línea, es porque ingresó "admin" y "1234" correctamente
+        // 2. Si el login fue exitoso, cargamos el marco vacío
         setContentView(R.layout.activity_main)
 
-        val tvHolaMundo = findViewById<TextView>(R.id.tvHolaMundo)
-        // Puedes concatenar variables o poner el texto directo sin que te marque advertencia
-        tvHolaMundo.text = "¡Hola Mundo! Has iniciado sesión exitosamente con clave fija."
+        // 3. Inyectamos el Fragmento inicial solo la primera vez que se crea la pantalla
+        if (savedInstanceState == null) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.contenedorRuteo, InicioFragment())
+                .commit()
+        }
     }
 }

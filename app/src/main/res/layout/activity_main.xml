@@ -11,18 +11,6 @@
         android:id="@+id/contenedorRuteo"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
-        <TextView
-            android:id="@+id/tvHolaMundo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Esperando verificación..."
-            android:textColor="@android:color/black"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textAlignment="center"
-            android:padding="32dp"/>
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
