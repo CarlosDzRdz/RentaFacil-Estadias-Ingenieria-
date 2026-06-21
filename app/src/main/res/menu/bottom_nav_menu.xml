@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Menu -->
+    <!-- Opción de Inicio -->
+    <item
+        android:id="@+id/nav_inicio"
+        android:icon="@drawable/baseline_home_24"
+        android:title="Inicio" />
+
+    <!-- Opción de Historial -->
+    <item
+        android:id="@+id/nav_historial"
+        android:icon="@drawable/baseline_receipt_24"
+        android:title="Historial" />
+
+    <!-- Opción de Perfil -->
+    <item
+        android:id="@+id/nav_perfil"
+        android:icon="@drawable/outline_account_circle_24"
+        android:title="Perfil" />
+
+</menu>

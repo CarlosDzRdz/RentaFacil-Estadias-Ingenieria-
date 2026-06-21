@@ -20,11 +20,12 @@ class LoginActivity : AppCompatActivity() {
         // Inicializamos la instancia de Firebase Auth
         auth = FirebaseAuth.getInstance()
 
-        val etCorreo = findViewById<TextInputEditText>(R.id.etCorreo)
-        val etContrasena = findViewById<TextInputEditText>(R.id.etContrasena)
-        val btnEntrar = findViewById<Button>(R.id.btnEntrar)
+        val etCorreo = findViewById<TextInputEditText>(R.id.etCorreo) //Variable para obtener el correo
+        val etContrasena = findViewById<TextInputEditText>(R.id.etContrasena) //Variable para obtener la contraseña
+        val btnEntrar = findViewById<Button>(R.id.btnEntrar) //Boton para iniciar sesión.
 
         btnEntrar.setOnClickListener {
+            //Si el boton es precionado mandamos lo que esta en las casillas. El trim ayuda con los espacios en blanco
             val correo = etCorreo.text.toString().trim()
             val contrasena = etContrasena.text.toString().trim()
 
@@ -33,9 +34,9 @@ class LoginActivity : AppCompatActivity() {
 
                 // Le preguntamos a Firebase si las credenciales existen y son correctas
                 auth.signInWithEmailAndPassword(correo, contrasena)
-                    .addOnCompleteListener(this) { task ->
+                    .addOnCompleteListener(this) { task -> //El resultado del intento de conexión se almacena en la variable task
                         if (task.isSuccessful) {
-                            // ¡Éxito! Firebase confirmó los datos.
+                            // Login exitoso, Firebase confirmó los datos.
                             val intent = Intent(this, MainActivity::class.java)
                             intent.putExtra("LOGIN_EXITOSO", true)
                             startActivity(intent)

@@ -50,6 +50,12 @@ dependencies {
     implementation (libs.firebase.auth)
     //implementation ("com.google.firebase:firebase-auth")
 
+    //Dependencia de Firebase Firestore (se necesita para el Storage) (fotos, videos, etc.)
+    implementation (libs.google.firebase.firestore)
+
+    //Dependencia para descargar fotos de Firebase Storage
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
