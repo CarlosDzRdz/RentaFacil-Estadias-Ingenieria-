@@ -41,7 +41,7 @@ class PerfilFragment : Fragment() {
         // Configuración del botón Cerrar Sesión
         btnCerrarSesion.setOnClickListener {
             auth.signOut()
-            val intent = Intent(requireContext(), LoginActivity::class.java) // Cambia a tu Activity de Login si se llama distinto
+            val intent = Intent(requireContext(), LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
         }

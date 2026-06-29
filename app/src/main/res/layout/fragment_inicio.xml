@@ -101,25 +101,40 @@
         android:id="@+id/layoutBotonesAccion"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="76dp"
+        android:layout_marginTop="116dp"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardEstadoCuenta"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/cardEstadoCuenta">
 
-        <Button
-        android:id="@+id/btnGenerarReferencia"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:text="Generar Referencia" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGenerarReferencia"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="14dp"
+            android:text="Generar Referencia de Pago"
+            android:textColor="#1E88E5"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:strokeColor="#1E88E5"
+            app:strokeWidth="2dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSubirComprobante"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Subir Comprobante" />
+            android:layout_height="56dp"
+            android:backgroundTint="#1E88E5"
+            android:text="Subir Comprobante de Pago"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:elevation="4dp" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
