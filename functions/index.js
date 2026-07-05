@@ -1,18 +1,24 @@
-const functions = require("firebase-functions");
-const stripe = require("stripe")("sk_test_51TnUasAff8ArF2JZ7Bn0zeWn6lnngCLwQDyw4UbKClsXa7vaYhOqCLofz168EXTm97uxXweT7n2Qyiy5GUgdfdKn006aqpUk03");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 
-exports.crearIntencionDePago = functions.https.onCall(async (data, context) => {
-    // EL MÉTODO SEGURO: Verificamos el token encriptado que manda Firebase Auth
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Debes iniciar sesión.');
+// La clave secreta ya no vive en el código: se configura una vez con
+// `firebase functions:secrets:set STRIPE_SECRET_KEY` y aquí solo se referencia.
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+
+exports.crearIntencionDePago = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+    // EL MÉTODO SEGURO: en la API v2 el auth viaja en "request.auth", no en un segundo parámetro.
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
     }
-
-    // Si pasó el filtro, significa que es un usuario legítimo. 
+    //Texto para forzar.
+    // Si pasó el filtro, significa que es un usuario legítimo.
     // Podemos sacar su UID real del context por si lo necesitamos después.
-    const uidSeguro = context.auth.uid; 
-    
+    const uidSeguro = request.auth.uid;
+
     // Stripe maneja todo en centavos
-    const monto = data.monto; 
+    const monto = request.data.monto;
+
+    const stripe = require("stripe")(stripeSecretKey.value());
 
     try {
         const paymentIntent = await stripe.paymentIntents.create({
@@ -25,6 +31,6 @@ exports.crearIntencionDePago = functions.https.onCall(async (data, context) => {
             clientSecret: paymentIntent.client_secret
         };
     } catch (error) {
-        throw new functions.https.HttpsError('internal', error.message);
+        throw new HttpsError('internal', error.message);
     }
 });
