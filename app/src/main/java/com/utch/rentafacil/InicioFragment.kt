@@ -43,6 +43,7 @@ class InicioFragment : Fragment() {
         val txtPrincipal = view.findViewById<TextView>(R.id.txtPrincipalEstado)
         val txtSecundario = view.findViewById<TextView>(R.id.txtSecundarioFecha)
         val btnSubirComprobante = view.findViewById<MaterialButton>(R.id.btnSubirComprobante)
+        val btnPagarRenta = view.findViewById<MaterialButton>(R.id.btnPagarRenta)
 
         // Inicialización de instancias de autenticación y base de datos
         val uid = FirebaseAuth.getInstance().currentUser?.uid
@@ -61,6 +62,14 @@ class InicioFragment : Fragment() {
         // Configuración del botón para activar la selección de archivos de la galería
         btnSubirComprobante.setOnClickListener {
             seleccionarImagen.launch("image/*")
+        }
+
+        // 2. NAVEGACIÓN HACIA LA PASARELA DE STRIPE
+        btnPagarRenta.setOnClickListener {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, PagoFragment())
+                .addToBackStack(null) // Esto permite regresar al Inicio con la flecha de "Atrás" de Android
+                .commit()
         }
 
         // Validación de sesión activa

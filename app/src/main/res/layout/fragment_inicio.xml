@@ -110,7 +110,7 @@
         app:layout_constraintTop_toBottomOf="@id/cardEstadoCuenta">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGenerarReferencia"
+            android:id="@+id/btnPagarRenta"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
