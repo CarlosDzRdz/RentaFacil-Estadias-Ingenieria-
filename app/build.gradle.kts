@@ -57,6 +57,12 @@ dependencies {
     //Dependencia para descargar fotos de Firebase Storage
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
+    // Dependencia de Firebase Cloud Functions (sin el -ktx)
+    implementation("com.google.firebase:firebase-functions")
+
+// Dependencia del SDK de Stripe para la pasarela de pagos
+    implementation("com.stripe:stripe-android:23.11.1")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
