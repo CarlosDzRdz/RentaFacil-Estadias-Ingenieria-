@@ -31,6 +31,7 @@ class PerfilFragment : Fragment() {
         val txtNombreCompleto = view.findViewById<TextView>(R.id.txtPerfilNombreCompleto)
         val txtDepartamento = view.findViewById<TextView>(R.id.txtPerfilDepartamento)
         val txtContrato = view.findViewById<TextView>(R.id.txtPerfilContrato)
+        val txtTelefono = view.findViewById<TextView>(R.id.txtPerfilTelefono)
 
         val btnCerrarSesion = view.findViewById<Button>(R.id.btnCerrarSesion)
 
@@ -60,6 +61,8 @@ class PerfilFragment : Fragment() {
                         val departamentoBD = documento.getString("departamento") ?: "No asignado"
                         val contratoBD = documento.getString("tipo_contrato") ?: "No asignado"
                         val urlFoto = documento.getString("fotoUrl") ?: ""
+                        val telefonoBD = documento.getString("telefono") ?: ""
+
 
                         // 2. Lógica para el Nombre Completo (Inferior)
                         val nombreCompleto = "$nombresBD $apellidosBD".trim()
@@ -75,6 +78,7 @@ class PerfilFragment : Fragment() {
                         txtNombreCompleto.text = nombreCompleto.ifEmpty { "Usuario" }
                         txtDepartamento.text = departamentoBD
                         txtContrato.text = contratoBD
+                        txtTelefono.text = telefonoBD
 
                         // 5. Cargamos la foto con Glide
                         if (urlFoto.isNotEmpty() && isAdded) {
