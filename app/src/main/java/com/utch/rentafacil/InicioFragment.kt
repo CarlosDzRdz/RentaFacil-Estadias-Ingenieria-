@@ -66,10 +66,8 @@ class InicioFragment : Fragment() {
 
         // 2. NAVEGACIÓN HACIA LA PASARELA DE STRIPE
         btnPagarRenta.setOnClickListener {
-            requireActivity().supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, PagoFragment())
-                .addToBackStack(null) // Esto permite regresar al Inicio con la flecha de "Atrás" de Android
-                .commit()
+            // Le pedimos a la Actividad principal que lance el fragmento de pago en la capa superior
+            (requireActivity() as MainActivity).replaceFragment(PagoFragment())
         }
 
         // Validación de sesión activa

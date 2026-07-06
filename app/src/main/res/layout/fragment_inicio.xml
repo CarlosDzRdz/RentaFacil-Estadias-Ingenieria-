@@ -111,29 +111,24 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPagarRenta"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginBottom="14dp"
-            android:text="Generar Referencia de Pago"
-            android:textColor="#1E88E5"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            app:cornerRadius="12dp"
-            app:strokeColor="#1E88E5"
-            app:strokeWidth="2dp" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:padding="14dp"
+            android:text="Generar referencia de pago"
+            android:textAllCaps="false" android:textColor="#FFFFFF"
+            app:backgroundTint="#1976D2" app:cornerRadius="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSubirComprobante"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:backgroundTint="#1E88E5"
-            android:text="Subir Comprobante de Pago"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:padding="14dp"
+            android:text="Subir comprobante de pago"
+            android:textAllCaps="false"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            app:cornerRadius="12dp"
-            app:elevation="4dp" />
+            app:backgroundTint="#1976D2" app:cornerRadius="8dp" />
 
     </LinearLayout>
 
