@@ -84,7 +84,7 @@ class InicioFragment : Fragment() {
 
                         // Extracción de fechas nativas (Timestamp) de Firestore
                         val timestampVencimiento = documento.getTimestamp("fecha_vencimiento")
-                        val timestampPago = documento.getTimestamp("fecha_pago")
+                        val timestampPago = documento.getTimestamp("fecha_ultimo_pago")
 
                         // Formateo de fechas para su visualización en la interfaz (DD/MM/AAAA)
                         val formatoFecha = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
@@ -97,15 +97,48 @@ class InicioFragment : Fragment() {
                             Glide.with(this).load(urlFoto).circleCrop().into(imgPerfil)
                         }
 
-                        // Lógica de renderizado dinámico para la tarjeta de Estado de Cuenta
-                        if (estadoPago.lowercase() == "pagado") {
-                            txtPrincipal.text = "¡Mes Pagado!"
-                            txtPrincipal.setTextColor("#4CAF50".toColorInt())
-                            txtSecundario.text = "Tu próximo vencimiento es el: $fechaVencimientoBD"
-                        } else {
-                            txtPrincipal.text = "$${montoRenta}"
-                            txtPrincipal.setTextColor("#F44336".toColorInt())
-                            txtSecundario.text = "Último pago registrado: $fechaPagoBD"
+                        // Lógica de renderizado dinámico para la tarjeta de Estado de Cuenta.
+                        // No confiamos únicamente en "estado_pago": calculamos el estado real
+                        // comparando fecha_vencimiento contra la fecha de hoy del teléfono.
+                        val hoy = java.util.Date()
+                        val vencimiento = timestampVencimiento?.toDate()
+                        val diasDeAvisoMs = 5L * 24 * 60 * 60 * 1000
+                        val inicioVentanaAviso = vencimiento?.let { java.util.Date(it.time - diasDeAvisoMs) }
+
+                        when {
+                            estadoPago.lowercase() == "en_transito" -> {
+                                txtPrincipal.text = "Procesando pago..."
+                                txtPrincipal.setTextColor("#2196F3".toColorInt())
+                                txtSecundario.text = "Esto puede tardar unas horas"
+                                actualizarEstiloBoton(btnPagarRenta, bloqueado = true)
+                            }
+                            vencimiento == null -> {
+                                // Respaldo si todavía no hay fecha_vencimiento registrada
+                                txtPrincipal.text = "$${montoRenta}"
+                                txtPrincipal.setTextColor("#F44336".toColorInt())
+                                txtSecundario.text = "Último pago registrado: $fechaPagoBD"
+                                actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                            }
+                            hoy.before(inicioVentanaAviso) -> {
+                                txtPrincipal.text = "¡Mes Pagado!"
+                                txtPrincipal.setTextColor("#4CAF50".toColorInt())
+                                txtSecundario.text = "Tu próximo vencimiento es el: $fechaVencimientoBD"
+                                // TODO: antes de lanzar la app, cambiar a bloqueado = true.
+                                // Se deja habilitado temporalmente mientras seguimos haciendo pruebas de pago.
+                                actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                            }
+                            !hoy.after(vencimiento) -> {
+                                txtPrincipal.text = "$${montoRenta}"
+                                txtPrincipal.setTextColor("#FF9800".toColorInt())
+                                txtSecundario.text = "Tu fecha de corte se acerca: $fechaVencimientoBD"
+                                actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                            }
+                            else -> {
+                                txtPrincipal.text = "$${montoRenta}"
+                                txtPrincipal.setTextColor("#F44336".toColorInt())
+                                txtSecundario.text = "Pago pendiente. Último pago: $fechaPagoBD"
+                                actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                            }
                         }
                     }
                 }
@@ -115,6 +148,23 @@ class InicioFragment : Fragment() {
         }
 
         return view
+    }
+
+    // Da al botón una apariencia visualmente distinta cuando está bloqueado
+    // (fondo blanco, letras y borde azules) en vez de solo desactivarlo.
+    private fun actualizarEstiloBoton(boton: MaterialButton, bloqueado: Boolean) {
+        boton.isEnabled = !bloqueado
+        val azul = "#1976D2".toColorInt()
+        if (bloqueado) {
+            boton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
+            boton.setTextColor(azul)
+            boton.strokeColor = android.content.res.ColorStateList.valueOf(azul)
+            boton.strokeWidth = 4
+        } else {
+            boton.backgroundTintList = android.content.res.ColorStateList.valueOf(azul)
+            boton.setTextColor(android.graphics.Color.WHITE)
+            boton.strokeWidth = 0
+        }
     }
 
     // Transfiere el archivo seleccionado a la carpeta del usuario en Firebase Storage
