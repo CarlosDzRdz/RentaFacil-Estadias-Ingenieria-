@@ -12,11 +12,15 @@ import com.bumptech.glide.Glide
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import androidx.core.graphics.toColorInt
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 
 class InicioFragment : Fragment() {
+
+    // Se guarda para poder quitarlo en onDestroyView y no dejarlo escuchando de más
+    private var listenerEstadoCuenta: com.google.firebase.firestore.ListenerRegistration? = null
 
     // Contrato moderno para abrir la galería y seleccionar una imagen
     private val seleccionarImagen = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: android.net.Uri? ->
@@ -44,6 +48,7 @@ class InicioFragment : Fragment() {
         val txtSecundario = view.findViewById<TextView>(R.id.txtSecundarioFecha)
         val btnSubirComprobante = view.findViewById<MaterialButton>(R.id.btnSubirComprobante)
         val btnPagarRenta = view.findViewById<MaterialButton>(R.id.btnPagarRenta)
+        val btnCancelarPago = view.findViewById<MaterialButton>(R.id.btnCancelarPago)
 
         // Inicialización de instancias de autenticación y base de datos
         val uid = FirebaseAuth.getInstance().currentUser?.uid
@@ -70,11 +75,37 @@ class InicioFragment : Fragment() {
             (requireActivity() as MainActivity).replaceFragment(PagoFragment())
         }
 
-        // Validación de sesión activa
+        // Respaldo manual: por si la app se cerró o se perdió la conexión antes de
+        // que el cierre normal de la hoja de pago pudiera limpiar el bloqueo solo.
+        btnCancelarPago.setOnClickListener {
+            btnCancelarPago.isEnabled = false
+            FirebaseFunctions.getInstance()
+                .getHttpsCallable("cancelarPagoPendiente")
+                .call()
+                .addOnSuccessListener {
+                    Toast.makeText(requireContext(), "Pago pendiente cancelado", Toast.LENGTH_SHORT).show()
+                    // El listener en tiempo real se encarga de refrescar la pantalla sola
+                }
+                .addOnFailureListener { error ->
+                    btnCancelarPago.isEnabled = true
+                    Toast.makeText(requireContext(), error.message ?: "No se pudo cancelar el pago", Toast.LENGTH_LONG).show()
+                }
+        }
+
+        // Validación de sesión activa.
+        // Usamos un listener en tiempo real (no una lectura única) para que la
+        // tarjeta se actualice sola en cuanto cambie algo en Firestore —
+        // por ejemplo, justo después de que un pago se confirme o se cancele —
+        // sin que el usuario tenga que cerrar y volver a abrir la app.
         if (uid != null) {
-            db.collection("usuarios").document(uid).get()
-                .addOnSuccessListener { documento ->
-                    if (documento.exists()) {
+            listenerEstadoCuenta = db.collection("usuarios").document(uid)
+                .addSnapshotListener { documento, error ->
+                    if (error != null) {
+                        Toast.makeText(requireContext(), "Error al conectar con la base de datos", Toast.LENGTH_SHORT).show()
+                        return@addSnapshotListener
+                    }
+
+                    if (documento != null && documento.exists()) {
 
                         // Extracción de datos básicos del usuario
                         val nombreBD = documento.getString("nombre(s)") ?: "Usuario"
@@ -111,6 +142,8 @@ class InicioFragment : Fragment() {
                                 txtPrincipal.setTextColor("#2196F3".toColorInt())
                                 txtSecundario.text = "Esto puede tardar unas horas"
                                 actualizarEstiloBoton(btnPagarRenta, bloqueado = true)
+                                btnCancelarPago.visibility = View.VISIBLE
+                                btnCancelarPago.isEnabled = true
                             }
                             vencimiento == null -> {
                                 // Respaldo si todavía no hay fecha_vencimiento registrada
@@ -118,36 +151,42 @@ class InicioFragment : Fragment() {
                                 txtPrincipal.setTextColor("#F44336".toColorInt())
                                 txtSecundario.text = "Último pago registrado: $fechaPagoBD"
                                 actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                                btnCancelarPago.visibility = View.GONE
                             }
                             hoy.before(inicioVentanaAviso) -> {
                                 txtPrincipal.text = "¡Mes Pagado!"
                                 txtPrincipal.setTextColor("#4CAF50".toColorInt())
                                 txtSecundario.text = "Tu próximo vencimiento es el: $fechaVencimientoBD"
-                                // TODO: antes de lanzar la app, cambiar a bloqueado = true.
-                                // Se deja habilitado temporalmente mientras seguimos haciendo pruebas de pago.
-                                actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                                actualizarEstiloBoton(btnPagarRenta, bloqueado = true)
+                                btnCancelarPago.visibility = View.GONE
                             }
                             !hoy.after(vencimiento) -> {
                                 txtPrincipal.text = "$${montoRenta}"
                                 txtPrincipal.setTextColor("#FF9800".toColorInt())
                                 txtSecundario.text = "Tu fecha de corte se acerca: $fechaVencimientoBD"
                                 actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                                btnCancelarPago.visibility = View.GONE
                             }
                             else -> {
                                 txtPrincipal.text = "$${montoRenta}"
                                 txtPrincipal.setTextColor("#F44336".toColorInt())
                                 txtSecundario.text = "Pago pendiente. Último pago: $fechaPagoBD"
                                 actualizarEstiloBoton(btnPagarRenta, bloqueado = false)
+                                btnCancelarPago.visibility = View.GONE
                             }
                         }
                     }
                 }
-                .addOnFailureListener {
-                    Toast.makeText(requireContext(), "Error al conectar con la base de datos", Toast.LENGTH_SHORT).show()
-                }
         }
 
         return view
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Evita que el listener se quede escuchando después de que la vista ya no existe
+        listenerEstadoCuenta?.remove()
+        listenerEstadoCuenta = null
     }
 
     // Da al botón una apariencia visualmente distinta cuando está bloqueado

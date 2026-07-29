@@ -1,18 +1,30 @@
 package com.utch.rentafacil
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var viewPager: ViewPager2
     private lateinit var bottomNavigation: BottomNavigationView
+
+    // Si el usuario niega el permiso, simplemente no le llegarán notificaciones;
+    // no hay nada más que reaccionar aquí.
+    private val solicitarPermisoNotificaciones =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +40,10 @@ class MainActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        // 2.5. Notificaciones push: pedimos permiso (Android 13+) y guardamos el token del dispositivo
+        pedirPermisoNotificaciones()
+        guardarTokenFcm()
 
         // 3. Pintamos la interfaz en la pantalla
         setContentView(R.layout.activity_main)
@@ -50,6 +66,12 @@ class MainActivity : AppCompatActivity() {
 
         // 7. Sincronización 2: Al tocar el menú inferior
         bottomNavigation.setOnItemSelectedListener { item ->
+            // Si hay una pantalla superpuesta (ej. PagoFragment) en fragment_container,
+            // la quitamos primero para que vuelva a verse el ViewPager2 de abajo.
+            if (supportFragmentManager.backStackEntryCount > 0) {
+                supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+            }
+
             when (item.itemId) {
                 R.id.nav_inicio -> {
                     viewPager.currentItem = 0
@@ -65,6 +87,29 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> false
             }
+        }
+    }
+
+    private fun pedirPermisoNotificaciones() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val yaConcedido = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!yaConcedido) {
+                solicitarPermisoNotificaciones.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // Guarda el token actual de FCM en el expediente del usuario para que la
+    // Cloud Function programada sepa a qué dispositivo mandarle los recordatorios.
+    private fun guardarTokenFcm() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            FirebaseFirestore.getInstance().collection("usuarios").document(uid)
+                .update("fcm_token", token)
         }
     }
 

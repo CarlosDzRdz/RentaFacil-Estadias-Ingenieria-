@@ -1,4 +1,5 @@
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 
 // Inicializamos Admin para poder modificar la base de datos Firestore más adelante
@@ -67,6 +68,49 @@ exports.crearIntencionDePago = onCall({ secrets: [stripeSecretKey] }, async (req
     } catch (error) {
         throw new HttpsError('internal', error.message);
     }
+});
+
+// ----------------------------------------------------------------------
+// Cancela un pago que se quedó "en tránsito" sin resolverse (ej. el usuario
+// cerró la hoja de pago sin llegar a generar un vale de OXXO ni confirmar
+// una tarjeta). Si Stripe ya generó un vale real, la cancelación se rechaza
+// y el pago se queda como está hasta que se resuelva por su cuenta.
+// ----------------------------------------------------------------------
+exports.cancelarPagoPendiente = onCall({ secrets: [stripeSecretKey] }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    }
+
+    const uid = request.auth.uid;
+    const usuarioRef = admin.firestore().collection('usuarios').doc(uid);
+    const usuarioSnap = await usuarioRef.get();
+
+    if (!usuarioSnap.exists) {
+        throw new HttpsError('not-found', 'No se encontró tu expediente.');
+    }
+
+    const paymentIntentId = usuarioSnap.data().payment_intent_pendiente;
+    if (!paymentIntentId) {
+        return { cancelado: false, mensaje: 'No hay ningún pago pendiente que cancelar.' };
+    }
+
+    const stripe = require("stripe")(stripeSecretKey.value());
+
+    try {
+        await stripe.paymentIntents.cancel(paymentIntentId);
+    } catch (error) {
+        throw new HttpsError(
+            'failed-precondition',
+            'Este pago ya generó un vale de OXXO y no se puede cancelar todavía. Espera a que se resuelva.'
+        );
+    }
+
+    await usuarioRef.update({
+        payment_intent_pendiente: admin.firestore.FieldValue.delete(),
+        estado_pago: 'pendiente'
+    });
+
+    return { cancelado: true };
 });
 
 // Cuántos meses le corresponde sumar a fecha_vencimiento según el contrato
@@ -213,3 +257,97 @@ exports.stripeWebhook = onRequest({ secrets: [stripeSecretKey, stripeWebhookSecr
     // Le respondemos a Stripe con un 200 (OK) para que sepa que recibimos el mensaje
     res.status(200).send('Recibido');
 });
+
+// ----------------------------------------------------------------------
+// FUNCIÓN 3: RECORDATORIOS DE PAGO (corre una vez al día vía Cloud Scheduler)
+// ----------------------------------------------------------------------
+
+// Días antes de vencer en los que se manda un aviso, y hasta cuántos días
+// de atraso se sigue insistiendo, según el tipo de contrato.
+const CONFIG_RECORDATORIOS = {
+    'Mensual': { avisosPrevios: [5, 0], limiteAtrasoDias: 7 },
+    'Semestral': { avisosPrevios: [30, 15, 0], limiteAtrasoDias: 30 },
+    'Anual': { avisosPrevios: [30, 15, 0], limiteAtrasoDias: 30 }
+};
+
+// "Hoy" anclado a medianoche en Ciudad de México (06:00 UTC), para poder
+// restarlo directamente contra fecha_vencimiento (guardada con la misma convención).
+function obtenerHoyMexico() {
+    const ahoraMexico = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+    return new Date(Date.UTC(ahoraMexico.getFullYear(), ahoraMexico.getMonth(), ahoraMexico.getDate(), 6, 0, 0));
+}
+
+function diasHastaVencimiento(fechaVencimiento, hoy) {
+    const msPorDia = 24 * 60 * 60 * 1000;
+    return Math.round((fechaVencimiento.getTime() - hoy.getTime()) / msPorDia);
+}
+
+function construirMensaje(dias) {
+    if (dias > 0) {
+        if (dias === 30) {
+            return { titulo: 'Se acerca tu pago', cuerpo: 'Falta 1 mes para tu próximo pago de renta.' };
+        }
+        return { titulo: 'Tu pago está por vencer', cuerpo: `Faltan ${dias} días para tu próximo pago de renta.` };
+    }
+    if (dias === 0) {
+        return { titulo: 'Tu pago vence hoy', cuerpo: 'Hoy es la fecha límite para pagar tu renta.' };
+    }
+    const diasAtraso = Math.abs(dias);
+    return {
+        titulo: 'Pago atrasado',
+        cuerpo: `Llevas ${diasAtraso} día${diasAtraso === 1 ? '' : 's'} de atraso en tu pago de renta.`
+    };
+}
+
+exports.recordatoriosDePago = onSchedule(
+    { schedule: '0 8 * * *', timeZone: 'America/Mexico_City' },
+    async () => {
+        const db = admin.firestore();
+        const hoy = obtenerHoyMexico();
+        const hoyString = hoy.toISOString().slice(0, 10);
+
+        const usuariosSnap = await db.collection('usuarios').get();
+
+        for (const doc of usuariosSnap.docs) {
+            const datos = doc.data();
+
+            // No molestamos a quien ya pagó o tiene un pago en proceso
+            if (datos.estado_pago === 'pagado' || datos.estado_pago === 'en_transito') {
+                continue;
+            }
+
+            const config = CONFIG_RECORDATORIOS[datos.tipo_contrato];
+            const fechaVencimiento = datos.fecha_vencimiento ? datos.fecha_vencimiento.toDate() : null;
+            const token = datos.fcm_token;
+
+            if (!config || !fechaVencimiento || !token) {
+                continue;
+            }
+
+            // Protección ante una segunda ejecución accidental el mismo día
+            if (datos.ultimo_recordatorio_enviado === hoyString) {
+                continue;
+            }
+
+            const dias = diasHastaVencimiento(fechaVencimiento, hoy);
+            const esHitoPrevio = config.avisosPrevios.includes(dias);
+            const esAtrasoDentroDelLimite = dias < 0 && Math.abs(dias) <= config.limiteAtrasoDias;
+
+            if (!esHitoPrevio && !esAtrasoDentroDelLimite) {
+                continue;
+            }
+
+            const { titulo, cuerpo } = construirMensaje(dias);
+
+            try {
+                await admin.messaging().send({
+                    token,
+                    notification: { title: titulo, body: cuerpo }
+                });
+                await doc.ref.update({ ultimo_recordatorio_enviado: hoyString });
+            } catch (err) {
+                console.error(`Error mandando notificación a ${doc.id}:`, err);
+            }
+        }
+    }
+);

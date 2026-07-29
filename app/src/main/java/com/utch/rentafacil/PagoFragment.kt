@@ -139,6 +139,10 @@ class PagoFragment : Fragment() {
         when (paymentSheetResult) {
             is PaymentSheetResult.Canceled -> {
                 Toast.makeText(requireContext(), "Pago cancelado", Toast.LENGTH_SHORT).show()
+                // El usuario cerró la hoja de pago sin confirmar nada: intentamos
+                // liberar el bloqueo de inmediato en vez de esperar un webhook que,
+                // si no llegó a generarse un vale de OXXO, nunca va a llegar.
+                cancelarPagoPendiente()
             }
             is PaymentSheetResult.Failed -> {
                 Toast.makeText(requireContext(), "Error: ${paymentSheetResult.error.message}", Toast.LENGTH_LONG).show()
@@ -147,5 +151,15 @@ class PagoFragment : Fragment() {
                 Toast.makeText(requireContext(), "Pago procesado exitosamente", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun cancelarPagoPendiente() {
+        functions
+            .getHttpsCallable("cancelarPagoPendiente")
+            .call()
+            .addOnFailureListener {
+                // Si ya se generó un vale de OXXO, Stripe rechaza la cancelación
+                // y el pago se queda "en tránsito" hasta que se resuelva solo.
+            }
     }
 }

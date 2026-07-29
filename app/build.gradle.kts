@@ -53,6 +53,7 @@ dependencies {
     //Dependencias de Firebase Firestore (se necesita para el Storage) (fotos, videos, etc.)
     implementation (libs.google.firebase.firestore)
     implementation(libs.firebase.storage)
+    implementation(libs.firebase.messaging)
 
     //Dependencia para descargar fotos de Firebase Storage
     implementation("com.github.bumptech.glide:glide:4.16.0")
